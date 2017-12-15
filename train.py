@@ -3,6 +3,7 @@ import time
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
+import torch.optim as optim
 from torch.nn.utils.rnn import pack_padded_sequence
 from model import Encoder, Decoder 
 from utils import *
@@ -61,22 +62,10 @@ def valid(dataset, en, de, recon_fn, out_prefix, save_prefix,nE):
 
 #TODO:EDIT TRAINING PROCESS
 def Train(epoch, lr, batch_size, hidden_size, print_every, save_every, postfix, save_dir):
-    tr_logfile = open(save_prefix+'_train_logger.csv', 'w')
-    print('part loss', file=tr_logfile)
-
-    val_logfile = open(save_prefix+'_valid_logger.csv', 'w')
-    print('validation part:', *dataset.validation_list(), sep=' ', file=val_logfile)
-    print('validation loss', file=val_logfile)
-    val_logfile.close()
-    
-    stop_cnt = 0
-    best_loss = sys.float_info.max
-    for nE in range(epochs):
-        print('Epoch:',nE,file = tr_logfile)
-        en.train()
-        de.train()
-        dataset.train()
-        eStart = time.time()
+    print("Building Encoder and Decoder...")
+    en = Encoder(input_size, hidden_size)
+    de = AttnDecoder(attn_model,hidden_size,output_size)
+    optimizer = optim
         print('Start training...')
         for nP, part in enumerate(dataset):
             pLoss = 0
