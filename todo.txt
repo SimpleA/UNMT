@@ -1,0 +1,10 @@
+TODO:
+1.Modify load.py to fit subwords and find solutions with higher performance...
+2.Verify models in model.py (Encoder should be fine)
+3.Finish the denoising and backtranslation procedure
+
+Remarks:
+1.The embedding data may named as 'cross_en', 'cross_fr' but should be changed to 'en' and 'fr' to fit my code in load.py
+2.In the original paper, the figure of "encoder" in their model has one bidirectional layer and one unidirectional layer, but they said they use bidirectional. Also, because decoders are unidirectional, we should figure out how to make encoder_hidden and decoder_hidden compatible 
+3.Latest data after preprocessing uses <UNK> tag to represent the word that appears less than 5 times in the data, but my load.py just sets vocab_size to 5000 and makes all the other <UNK>.
+4.I'm not sure what to do with <BOS> and <EOS> tags, maybe someone can scrutinize the paper and tell me...

@@ -18,6 +18,9 @@ def tfmt(s):
         f = '%d s' % s
     return f
 
+#TODO: Finish swapping method
+def sentence_swap(index,sentence_embedding):
+    return index, sentence_embedding
 
 def shuffle(x, y):
     assert x.shape[0] == y.shape[0]
