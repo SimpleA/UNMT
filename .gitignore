@@ -1,0 +1,6 @@
+data/
+test_loader.py
+__pychache__/
+emb_fr
+vocab_fr.pkl
+vocab_en.pkl
