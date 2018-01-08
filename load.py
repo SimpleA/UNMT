@@ -1,12 +1,13 @@
 from torch.utils.data import Dataset,DataLoader
 import pickle
 import torch
+import pdb
 
 PAD_TOKEN = 0
 BOS_TOKEN = 1
 EOS_TOKEN = 2
 UNK_TOKEN = 3
-VOCAB_SIZE = 5000
+VOCAB_SIZE = 49000
 MAX_LENGTH = 60
 class Vocab:
 	def __init__(self,data_path,language,verbose):
@@ -35,7 +36,7 @@ class Vocab:
 		except:
 			if self.verbose:
 				print("Saved file not found! Creating...")
-			with open(self.path,'r') as f:
+			with open(self.path, 'r', encoding='utf-8') as f:
 				for idx,line in enumerate(f):
 					if len(line.strip().split()) <= MAX_LENGTH:
 						self.sentence.append(line.strip())
@@ -50,13 +51,13 @@ class Vocab:
 		
 			sorted_word = [w for (w,c) in sorted(self.word2count.items(), key = lambda x: x[1], reverse = True)]
 			for w in sorted_word[:VOCAB_SIZE]:
+				if w in ['<PAD>', '<BOS>', '<EOS>', '<UNK>']:
+					continue
 				self.word2index[w] = self.num_words
 				self.index2word[self.num_words] = w
 				self.num_words += 1
-		
-			output_dict = open('vocab_fr.pkl','wb')
-			pickle.dump({'word2count':self.word2count, 'word2index':self.word2index, 'index2word':self.index2word\
-					,'sentence':self.sentence},output_dict)
+			output_dict = open('vocab_{}.pkl'.format(self.language), 'wb')
+			pickle.dump({'word2count':self.word2count, 'word2index':self.word2index, 'index2word':self.index2word, 'sentence':self.sentence}, output_dict)
 			output_dict.close()
 
 class LanguageDataset(Dataset):
@@ -71,17 +72,15 @@ class LanguageDataset(Dataset):
 		except:
 			if verbose:
 				print("Saved embedding not found, create one...")
-			with open('./data/{}'.format(language),'r') as f:
+			with open('cross_{}'.format(language), 'r', encoding='utf-8') as f:
 				f.readline()
 				for line in f:
 					info = line.strip().split()
 					self.emb[info[0]] = torch.FloatTensor([float(num) for num in info[1:]])
 			of = open('emb_{}'.format(language),'wb')
 			pickle.dump(self.emb,of)
-
 	def sen2index(self,sen):
-		#TODO: Change 100 to embed_size
-		sen_emb = torch.zeros((MAX_LENGTH,100))
+		sen_emb = torch.zeros((MAX_LENGTH,300))
 		for ch in '.!()':
 			if ch in sen:
 				sen = sen.replace(ch, '')
@@ -95,11 +94,17 @@ class LanguageDataset(Dataset):
 			if word in self.emb.keys():
 				sen_emb[idx] = self.emb[word]
 			else:
-				#TODO: Fix the problem
-				#print("Wrong")
-				pass
+				# Unkown word
+				sen_emb[idx] = self.emb[self.vocab.index2word[UNK_TOKEN]]
+				# Search for subword. If match, replace UNK with the subword embedding
+				for char_idx in reversed(range(1, len(word)+1)):
+					subword = word[:char_idx] + '@@'
+					if subword in self.emb.keys():
+						sen_emb[idx] = self.emb[subword]
+						break				
 			length += 1
-		sen_index[len(sen.split())] = EOS_TOKEN
+		# No need to handle EOS since EOS is already appended to the end of every sentence
+		# sen_index[len(sen.split())] = EOS_TOKEN
 		return torch.LongTensor(sen_index),length,sen_emb
 
 	def __len__(self):
@@ -108,6 +113,6 @@ class LanguageDataset(Dataset):
 	def __getitem__(self,idx):
 		return self.sen2index(self.vocab.sentence[idx]) 
 
-#l1 = 'fr'
-#d = LanguageDataset('./data/data_{}.subword'.format(l1),'{}'.format(l1),True)
+#l1 = 'en'
+#d = LanguageDataset('data_{}.subword.clean'.format(l1),'{}'.format(l1),True)
 #loader = DataLoader(d, batch_size = 3, num_workers = 8, shuffle = True)
