@@ -63,6 +63,24 @@ def valid(dataset, en, de, recon_fn, out_prefix, save_prefix,nE):
 
     return vMSE 
 '''
+
+def maskCCE(output, target, mask):
+    criterion = nn.CrossEntropyLoss()
+    crossEntropy = criterion(output,target)
+    loss = crossEntropy.masked_select(mask).mean()
+    loss = loss.cuda() if USE_CUDA else loss
+    return loss
+
+def len2mask(batch_l):
+    mask = torch.zeros(len(batch_l),max(batch_l))
+    for i in range(len(batch_l)):
+        for j  in range(max(batch_l)):
+            if j < batch_l[i]:
+                mask[i][j] = 1
+    if USE_CUDA:
+        mask = mask.cuda()
+    return Variable(mask.byte())
+
 #TODO:EDIT TRAINING PROCESS
 def Train(verbose, l1, l2, epoch, lr, batch_size, hidden_size, vocab_size, print_every, save_every, postfix, save_dir):
 
@@ -99,10 +117,11 @@ def Train(verbose, l1, l2, epoch, lr, batch_size, hidden_size, vocab_size, print
                 batch_l = batch_l.cuda()
                 batch_sentence = batch_sentence.cuda()
             #TODO: finish sentence_swap function in util.py
-            batch_sentence = Variable(sentence_swap(batch_index,batch_sentence)[1])
+            #batch_sentence = Variable(sentence_swap(batch_l,batch_sentence))
+            batch_sentence = Variable(batch_sentence)
             batch_l, indices = torch.sort(batch_l, dim=0, descending=True)
             batch_sentence = batch_sentence[indices]
-            batch_index = batch_index[indices]
+            batch_index = Variable(batch_index[indices])
             packed_sentence = pack_padded_sequence(batch_sentence, batch_l.cpu().numpy(), batch_first=True)
 
             en_opt.zero_grad()
@@ -110,30 +129,29 @@ def Train(verbose, l1, l2, epoch, lr, batch_size, hidden_size, vocab_size, print
             hidden = en.init_hidden(batch_sentence.size(0))
             packed_output,en_hidden = en(packed_sentence, hidden)
             output,_ = pad_packed_sequence(packed_output,batch_first = True)
-            output = output.permute(1,0,2) #From (batch,seq_len,hidden_size) to (seq_len, batch,hidden_size)
-            ##################CHECK UNTIL HERE####################
-            de_input = Variable(torch.zeros(1,bsz,hidden_size)) # Iteration through time steps
-            de_context = Variable(torch.zeros(bsz,hidden_size))
+            de_input = Variable(torch.zeros(bsz,1,input_size)) # Iteration through time steps
+            de_context = Variable(torch.zeros(bsz,1,2*hidden_size))
+            print(de_input.size())
+            print(de_context.size())            
             if USE_CUDA:
                 de_input = de_input.cuda()
                 de_context = de_context.cuda()
             de_hidden_0 = (en_hidden[0]+en_hidden[1]).unsqueeze(0)
             de_hidden_1 = (en_hidden[1]+en_hidden[2]).unsqueeze(0)
             de_hidden = torch.cat((de_hidden_0,de_hidden_1),0)
+
+            denoising_loss_1 = 0
+            mask = len2mask(batch_l)
             for di in range(output.size(1)):
                 de_output, de_context, de_hidden, de_attention = l1_de(de_input, de_context, de_hidden, output)
-                print(de_output)
-                print(de_context)
-                print(de_hidden)
-                print(de_attention)
-                '''
-                choose,_ = torch.max(de_output)
-                de_input = Variable(torch.FloatTensor(l1_dataset.emb[l1_dataset.vocab.index2word[choose]])
+                _,choose = torch.max(de_output,1)
+                de_input = [l1_dataset.emb[l1_dataset.vocab.index2word[index.data[0]]].tolist() for index in choose]
+                de_input = Variable(torch.FloatTensor(de_input).unsqueeze(1))
                 if USE_CUDA:
                     de_input = de_input.cuda()
-                '''
+                denoising_loss_1 += maskCCE(de_output, batch_index[:,di], mask[:,di])
+                print(denoising_loss_1)
             '''
-            loss = maskCE(de_output, batch_index, batch_l, recon_fn)
             loss.backward()
             clip = 50.0
             torch.nn.utils.clip_grad_norm(en.parameters(), clip)
