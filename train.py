@@ -6,7 +6,7 @@ import torch.nn as nn
 from torch.autograd import Variable
 import torch.optim as optim
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
-from model import Encoder, Attn, AttnDecoder 
+from model import Encoder, Attn, AttnDecoder
 from load import LanguageDataset,MAX_LENGTH
 from utils import *
 
@@ -15,7 +15,7 @@ from utils import *
 def valid(dataset, en, de, recon_fn, out_prefix, save_prefix,nE):
     outfile = open('{}_{}.csv'.format(out_prefix,nE), 'w')
     val_logfile = open(save_prefix+'_valid_logger.csv', 'a')
-    
+
     vMSE = 0
     nVal = 0
     en.eval()
@@ -29,31 +29,31 @@ def valid(dataset, en, de, recon_fn, out_prefix, save_prefix,nE):
         for nB, (batch_x, batch_l, batch_y) in enumerate(part):
             seq_len = 58
             batch_l, indices = torch.sort(batch_l, dim=0, descending=True)
-            batch_x = batch_x[indices] 
+            batch_x = batch_x[indices]
             batch_y = batch_y[indices]
             batch_x = Variable(batch_x).cuda() if USE_CUDA else Variable(batch_x)
             packed_x = pack_padded_sequence(batch_x, batch_l.numpy(), batch_first=True)
-        
+
             hidden = en.init_hidden(batch_x.size()[0])
             en_hidden = en(packed_x, hidden)
-                
+
             de_input = Variable(torch.zeros(batch_x.size()[0],seq_len,39))
             if USE_CUDA:
                 de_input = de_input.cuda()
             de_output, de_hidden = de(de_input,en_hidden)
 
             loss = maskMSE(de_output, batch_x, batch_l, recon_fn)
-            
+
             pMSE += loss.data[0]
-            
+
             for i, feat in enumerate(de_hidden[0].data.squeeze(0).cpu().numpy()):
                 print(batch_y[i], end=',', file=outfile)
                 print(*feat, sep=' ', file=outfile)
-         
+
         tEnd = time.time()
         print('Part %s | loss %6.3f | cost %s'
               % (dataset.part, pMSE/len(part.dataset), tfmt(tEnd-tStart)))
-        
+
         vMSE += pMSE
         nVal += len(part.dataset)
 
@@ -61,7 +61,7 @@ def valid(dataset, en, de, recon_fn, out_prefix, save_prefix,nE):
     print('validation loss %6.3f , cost %s\n' % ((vMSE/nVal), tfmt(eEnd-eStart)))
     print(vMSE/nVal, file=val_logfile)
 
-    return vMSE 
+    return vMSE
 '''
 
 def maskCCE(output, target, mask):
@@ -88,8 +88,8 @@ def Train(verbose, l1, l2, epoch, lr, batch_size, hidden_size, vocab_size, print
     input_size = 300
     output_size = vocab_size
     en = Encoder(input_size, hidden_size)
-    l1_de = AttnDecoder('general',hidden_size,output_size)
-    l2_de = AttnDecoder('general',hidden_size,output_size)
+    l1_de = AttnDecoder('general', input_size, hidden_size, output_size)
+    l2_de = AttnDecoder('general', input_size, hidden_size, output_size)
 
     if USE_CUDA:
         en = en.cuda()
@@ -100,9 +100,9 @@ def Train(verbose, l1, l2, epoch, lr, batch_size, hidden_size, vocab_size, print
     l1_de_opt = optim.Adam(l1_de.parameters(), lr = 0.0002)
     l2_de_opt = optim.Adam(l2_de.parameters(), lr = 0.0002)
     print("Creating l1 dataset...")
-    l1_dataset = LanguageDataset('data_{}.subword.clean'.format(l1),l1,verbose)
+    l1_dataset = LanguageDataset('data/data_{}.subword.clean'.format(l1),l1,verbose)
     print("Creating l2 dataset...")
-    l2_dataset = LanguageDataset('data_{}.subword.clean'.format(l2),l2,verbose)
+    l2_dataset = LanguageDataset('data/data_{}.subword.clean'.format(l2),l2,verbose)
 
     l1_loader = DataLoader(l1_dataset, batch_size = batch_size, shuffle = True)
     l2_loader = DataLoader(l2_dataset, batch_size = batch_size, shuffle = True)
@@ -116,9 +116,8 @@ def Train(verbose, l1, l2, epoch, lr, batch_size, hidden_size, vocab_size, print
                 batch_index = batch_index.cuda()
                 batch_l = batch_l.cuda()
                 batch_sentence = batch_sentence.cuda()
-            #TODO: finish sentence_swap function in util.py
-            #batch_sentence = Variable(sentence_swap(batch_l,batch_sentence))
-            batch_sentence = Variable(batch_sentence)
+
+            batch_sentence = Variable(sentence_swap(batch_l, batch_sentence))
             batch_l, indices = torch.sort(batch_l, dim=0, descending=True)
             batch_sentence = batch_sentence[indices]
             batch_index = Variable(batch_index[indices])
@@ -132,7 +131,7 @@ def Train(verbose, l1, l2, epoch, lr, batch_size, hidden_size, vocab_size, print
             de_input = Variable(torch.zeros(bsz,1,input_size)) # Iteration through time steps
             de_context = Variable(torch.zeros(bsz,1,2*hidden_size))
             print(de_input.size())
-            print(de_context.size())            
+            print(de_context.size())
             if USE_CUDA:
                 de_input = de_input.cuda()
                 de_context = de_context.cuda()
@@ -145,7 +144,7 @@ def Train(verbose, l1, l2, epoch, lr, batch_size, hidden_size, vocab_size, print
             for di in range(output.size(1)):
                 de_output, de_context, de_hidden, de_attention = l1_de(de_input, de_context, de_hidden, output)
                 _,choose = torch.max(de_output,1)
-                de_input = [l1_dataset.emb[l1_dataset.vocab.index2word[index.data[0]]].tolist() for index in choose]
+                de_input = [l1_dataset.get_embed(index.data[0]).tolist() for index in choose]
                 de_input = Variable(torch.FloatTensor(de_input).unsqueeze(1))
                 if USE_CUDA:
                     de_input = de_input.cuda()
@@ -159,7 +158,7 @@ def Train(verbose, l1, l2, epoch, lr, batch_size, hidden_size, vocab_size, print
             '''
             en_opt.step()
             l1_de_opt.step()
-            
+
             pLoss += loss.data[0]
 
             #del batch_x, packed_x, hidden
@@ -181,10 +180,10 @@ def Train(verbose, l1, l2, epoch, lr, batch_size, hidden_size, vocab_size, print
         for batch_sentence, batch_l in enumerate(l2_loader):
             sen = Variable(sentence_swap(batch_sentence))
             batch_l, indices = torch.sort(batch_l, dim=0, descending=True)
-            batch_x = batch_x[indices] 
+            batch_x = batch_x[indices]
             batch_x = Variable(batch_x).cuda() if USE_CUDA else Variable(batch_x)
             packed_x = pack_padded_sequence(batch_x, batch_l.numpy(), batch_first=True)
-                
+
             en_opt.zero_grad()
             l2_de_opt.zero_grad()
             hidden = en.init_hidden(batch_x.size(0))
@@ -203,15 +202,15 @@ def Train(verbose, l1, l2, epoch, lr, batch_size, hidden_size, vocab_size, print
             '''
             en_opt.step()
             l2_de_opt.step()
-            
+
         print("Backtranslation on Language 1...")
         for batch_sentence, batch_l in enumerate(l1_loader):
             l2_de.eval()
             batch_l, indices = torch.sort(batch_l, dim=0, descending=True)
-            batch_x = batch_x[indices] 
+            batch_x = batch_x[indices]
             batch_x = Variable(batch_x).cuda() if USE_CUDA else Variable(batch_x)
             packed_x = pack_padded_sequence(batch_x, batch_l.numpy(), batch_first=True)
-                
+
             en_opt.zero_grad()
             l1_de_opt.zero_grad()
 
@@ -233,18 +232,18 @@ def Train(verbose, l1, l2, epoch, lr, batch_size, hidden_size, vocab_size, print
 
             loss = maskMSE(de_l1_output, batch_x, batch_l, recon_fn)
             loss.backward()
-            
+
             en_opt.step()
             l1_de_opt.step()
-        
+
         print("Backtranslation on Language 2...")
         for batch_sentence, batch_l in enumerate(l2_loader):
             l1_de.eval()
             batch_l, indices = torch.sort(batch_l, dim=0, descending=True)
-            batch_x = batch_x[indices] 
+            batch_x = batch_x[indices]
             batch_x = Variable(batch_x).cuda() if USE_CUDA else Variable(batch_x)
             packed_x = pack_padded_sequence(batch_x, batch_l.numpy(), batch_first=True)
-                
+
             en_opt.zero_grad()
             l2_de_opt.zero_grad()
 
@@ -266,13 +265,13 @@ def Train(verbose, l1, l2, epoch, lr, batch_size, hidden_size, vocab_size, print
 
             loss = maskMSE(de_l2_output, batch_x, batch_l, recon_fn)
             loss.backward()
-            
+
             en_opt.step()
             l2_de_opt.step()
 
         print("Finish an epoch")
-            
 
-   
+
+
 
 

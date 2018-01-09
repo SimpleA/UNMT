@@ -44,7 +44,7 @@ class Attn(nn.Module):
         # Calculate energies for each encoder output
         for i in range(seq_len):
             attn_energies[:, i] = self.score(hidden, encoder_outputs[:, i, :])
-        # Normalize energies to weights in range 0 to 1, resize to 1 x 1 x seq_len
+        # Normalize energies to weights in range 0 to 1, resize to B x 1 x S
         return F.softmax(attn_energies).unsqueeze(1)
 
     def score(self, hidden, encoder_output):
@@ -64,14 +64,16 @@ class Attn(nn.Module):
 
 
 class AttnDecoder(nn.Module):
-    def __init__(self, attn_model, hidden_size, output_size):
+    def __init__(self, attn_model, input_size, hidden_size, output_size):
         super(AttnDecoder, self).__init__()
         self.attn_model = attn_model
+        self.input_size = input_size
         self.hidden_size = hidden_size
         self.output_size = output_size
+        self.gru_input_size = self.input_size + self.hidden_size * 2
         if attn_model != None:
             self.attn = Attn(attn_model, hidden_size)
-        self.gru = nn.GRU(self.hidden_size * 3, self.hidden_size, num_layers=2, batch_first=True)
+        self.gru = nn.GRU(self.gru_input_size, self.hidden_size, num_layers=2, batch_first=True)
         self.out = nn.Linear(self.hidden_size * 3, self.output_size)
 
     def forward(self, input, context, hidden, encoder_outputs):
@@ -81,10 +83,10 @@ class AttnDecoder(nn.Module):
         # Calculate attention from current RNN state and all encoder outputs; apply to encoder outputs
         attn_weights = self.attn(rnn_output.squeeze(1), encoder_outputs)
 
-        context = attn_weights.bmm(encoder_outputs)  # B x 1 x H*2
+        context = attn_weights.bmm(encoder_outputs)  # B x 1 x 2H
 
         # Final output layer (next word prediction) using the RNN hidden state and context vector
-        
+
         #output = F.softmax(self.out(torch.cat((rnn_output.squeeze(1), context.squeeze(1)), 1)))
         output = self.out(torch.cat((rnn_output.squeeze(1), context.squeeze(1)), 1))
 
@@ -101,12 +103,17 @@ class AttnDecoder(nn.Module):
 
 
 def main():
-    encoder = Encoder(20, 20)
-    decoder = AttnDecoder('general', 20, 20)
-    test_seq = Variable(torch.rand(5, 10, 20)) # B x S x H (batch size, sequence length, hideen size)
-    test_word = Variable(torch.rand(5, 1, 20)) # B x 1 x H
-    test_context = Variable(torch.zeros(5, 1, 20)) # B x 1 x H
-    encoder_hidden = encoder.init_hidden(5)
+    batch_size = 5
+    seq_length = 10
+    input_size = 20
+    hidden_size = 30
+    output_size = 100
+    encoder = Encoder(input_size, hidden_size)
+    decoder = AttnDecoder('general', input_size, hidden_size, output_size)
+    test_seq = Variable(torch.rand(batch_size, seq_length, input_size))
+    test_word = Variable(torch.rand(batch_size, 1, input_size)) # B x 1 x H
+    test_context = Variable(torch.zeros(batch_size, 1, hidden_size * 2)) # B x 1 x 2H
+    encoder_hidden = encoder.init_hidden(batch_size)
     output, hidden = encoder(test_seq, encoder_hidden)
     output, context, hidden, attn_weights = decoder(test_word, test_context, hidden, output)
     print(output)

@@ -20,16 +20,16 @@ def tfmt(s):
     return f
 
 
-def sentence_swap(index, sentence_embedding):
-    for (b_idx, b_sent) in zip(index, sentence_embedding):
-        swap_times = int((b_idx.size(0) - b_idx.nonzero().size(0)) / 2)
+def sentence_swap(batch_lengths, batch_sentences):
+    for (length, sentence) in zip(batch_lengths, batch_sentences):
+        swap_times = int(length / 2)
         for i in range(swap_times):
-            random_idx = np.random.randint(b_idx.nonzero().size(0) - 1)
-            tmp = b_sent[random_idx + 1].clone()
-            b_sent[random_idx + 1] = b_sent[random_idx]
-            b_sent[random_idx] = tmp
+            random_idx = np.random.randint(length - 1)
+            tmp = sentence[random_idx + 1].clone()
+            sentence[random_idx + 1] = sentence[random_idx]
+            sentence[random_idx] = tmp
 
-    return sentence_embedding
+    return batch_sentences
 
 
 def shuffle(x, y):
