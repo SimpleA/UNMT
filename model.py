@@ -63,6 +63,8 @@ class AttnDecoder(nn.Module):
         self.gru_input_size = self.input_size + self.hidden_size * 2
         if attn_model != None:
             self.attn = Attn(attn_model, hidden_size)
+        else:
+            self.attn = None
         self.gru = nn.GRU(self.gru_input_size, self.hidden_size, num_layers=2, batch_first=True)
         self.out = nn.Linear(self.hidden_size * 3, self.output_size)
 
@@ -71,9 +73,12 @@ class AttnDecoder(nn.Module):
         rnn_input = torch.cat((input, context), 2)
         rnn_output, hidden = self.gru(rnn_input, hidden)  # B x 1 x H, 2 x B x H
         # Calculate attention from current RNN state and all encoder outputs; apply to encoder outputs
-        attn_weights = self.attn(rnn_output.squeeze(1), encoder_outputs)
+        if self.attn != None:
+            attn_weights = self.attn(rnn_output.squeeze(1), encoder_outputs)
+            context = attn_weights.bmm(encoder_outputs)  # B x 1 x 2H
+        else:
+            attn_weights = None
 
-        context = attn_weights.bmm(encoder_outputs)  # B x 1 x 2H
 
         # Final output layer (next word prediction) using the RNN hidden state and context vector
         output = self.out(torch.cat((rnn_output.squeeze(1), context.squeeze(1)), 1))

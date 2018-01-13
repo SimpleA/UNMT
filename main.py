@@ -12,9 +12,9 @@ parser.add_argument('--train', action='store_true', default=False)
 parser.add_argument('--l1', type=str, default = 'en')
 parser.add_argument('--l2', type=str, default = 'fr')
 parser.add_argument('--load', default=None)
-parser.add_argument('--epoch', type=int, default=1000)
+parser.add_argument('--iteration', type=int, default=150000)
 parser.add_argument('--lr', type=float, default=None)
-parser.add_argument('--batch_size', type=int, default=512)
+parser.add_argument('--batch_size', type=int, default=128)
 parser.add_argument('--hidden_size', type=int, default=100)
 parser.add_argument('--vocab_size', type = int, default=49000)
 parser.add_argument('--print_every', type=str, default=1)
@@ -29,7 +29,7 @@ def main(args):
     if args.train:
        if args.load:
            print("Loading saved model {} ...".format(args.load))
-       Train(args.verbose, args.l1, args.l2, args.epoch, args.lr, args.batch_size, args.hidden_size,args.vocab_size, \
+       Train(args.verbose, args.l1, args.l2, args.iteration, args.lr, args.batch_size, args.hidden_size,args.vocab_size, \
 		args.print_every, args.save_every, args.postfix,args.save_dir) 
     elif args.test:
         Test()
@@ -38,4 +38,4 @@ def main(args):
         sys.exit()
 
 if __name__ == '__main__':
-	main(args)    
+	main(args)
