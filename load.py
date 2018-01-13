@@ -8,7 +8,7 @@ BOS_TOKEN = 1
 EOS_TOKEN = 2
 UNK_TOKEN = 3
 VOCAB_SIZE = 49000
-MAX_LENGTH = 60
+MAX_LENGTH = 50
 
 
 class Vocab:
@@ -103,12 +103,13 @@ class LanguageDataset(Dataset):
             else:
                 # Unkown word
                 sen_emb[idx] = self.emb[self.vocab.index2word[UNK_TOKEN]]
+                # Do not use subword encoding
                 # Search for subword. If match, replace UNK with the subword embedding
-                for char_idx in reversed(range(1, len(word) + 1)):
-                    subword = word[:char_idx] + '@@'
-                    if subword in self.emb.keys():
-                        sen_emb[idx] = self.emb[subword]
-                        break
+                # for char_idx in reversed(range(1, len(word) + 1)):
+                #     subword = word[:char_idx] + '@@'
+                #     if subword in self.emb.keys():
+                #         sen_emb[idx] = self.emb[subword]
+                #         break
             length += 1
         # No need to handle EOS since EOS is already appended to the end of every sentence
         # sen_index[len(sen.split())] = EOS_TOKEN
@@ -120,11 +121,12 @@ class LanguageDataset(Dataset):
             embed = self.emb[word]
         else:
             embed = self.emb[self.vocab.index2word[UNK_TOKEN]]
-            for char_idx in reversed(range(1, len(word) + 1)):
-                subword = word[:char_idx] + '@@'
-                if subword in self.emb.keys():
-                    embed = self.emb[subword]
-                    break
+            # DO not use subword encoding
+            # for char_idx in reversed(range(1, len(word) + 1)):
+            #     subword = word[:char_idx] + '@@'
+            #     if subword in self.emb.keys():
+            #         embed = self.emb[subword]
+            #         break
 
         return embed
 
