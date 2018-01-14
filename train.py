@@ -256,7 +256,7 @@ def Train(verbose, l1, l2, iteration, lr, batch_size, hidden_size, vocab_size, p
             batch_l = batch_l.cuda()
             batch_sentence = batch_sentence.cuda()
 
-        batch_sentence = Variable(batch_sentence.long())
+        batch_sentence = Variable(batch_sentence)
         batch_l, indices = torch.sort(batch_l, dim=0, descending=True)
         batch_sentence = batch_sentence[indices]
         batch_index = Variable(batch_index[indices])
@@ -419,6 +419,8 @@ def Train(verbose, l1, l2, iteration, lr, batch_size, hidden_size, vocab_size, p
             with open(os.path.join(save_dir, 'log_' + postfix + '.csv'), 'a') as log_file:
                 log_file.write('{},{},{},{},{}'.format(it, de_l1_loss, de_l2_loss, bt_l1_loss, bt_l2_loss) + '\n')
             de_l1_loss, de_l2_loss, bt_l1_loss, bt_l2_loss = 0, 0, 0, 0
+            
+        if it % save_every == 0:
             torch.save({
                 'en':en.state_dict(),
                 'l1_de':l1_de.state_dict(),
@@ -426,7 +428,7 @@ def Train(verbose, l1, l2, iteration, lr, batch_size, hidden_size, vocab_size, p
                 'en_opt':en_opt.state_dict(),
                 'l1_de_opt':l1_de_opt.state_dict(),
                 'l2_de_opt':l2_de_opt.state_dict()},
-                postfix+'.pkl')
+                postfix+'e_{}.pkl'.format(it))
             
 #        print('Time for each iteration:', time.time()-start)
 
