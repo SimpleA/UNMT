@@ -54,7 +54,7 @@ class Vocab:
 
             sorted_word = [w for (w, c) in sorted(
                 self.word2count.items(), key=lambda x: x[1], reverse=True)]
-            for w in sorted_word[:VOCAB_SIZE]:
+            for w in sorted_word[:VOCAB_SIZE-1]:
                 if w in ['<PAD>', '<BOS>', '<EOS>', '<UNK>']:
                     continue
                 self.word2index[w] = self.num_words

@@ -70,13 +70,14 @@ def maskCCE(output, target, mask):
     total = mask.sum()
     criterion = nn.CrossEntropyLoss()
     crossEntropy = criterion(output,target)
+    pdb.set_trace()
     loss = crossEntropy.masked_select(mask).mean()
     # loss = loss.cuda() if USE_CUDA else loss
     return loss,total.data[0]
 
 def maskCCE_new(output, target, mask):
     total = mask.sum()
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss(reduce=False)
     crossEntropy = criterion(output.view(-1, VOCAB_SIZE),target.view(-1))
     loss = crossEntropy.masked_select(mask.view(-1, 1)).mean()
     # loss = loss.cuda() if USE_CUDA else loss

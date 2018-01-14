@@ -1,6 +1,6 @@
 import sys
 import argparse
-from train import Train 
+from train import Train
 from test import Test
 from utils import USE_CUDA
 
@@ -21,6 +21,7 @@ parser.add_argument('--print_every', type=str, default=5)
 parser.add_argument('--save_every', type=str, default=100)
 parser.add_argument('--postfix', type=str, default='None')
 parser.add_argument('--save_dir', type=str, default='save/')
+parser.add_argument('--model_path', type=str, default='./1.pkl')
 args = parser.parse_args()
 
 def main(args):
@@ -32,7 +33,7 @@ def main(args):
        Train(args.verbose, args.l1, args.l2, args.iteration, args.lr, args.batch_size, args.hidden_size,args.vocab_size, \
 		args.print_every, args.save_every, args.postfix,args.save_dir) 
     elif args.test:
-        Test()
+        Test(args.l1, args.l2, args.batch_size, args.hidden_size, args.vocab_size, args.model_path)
     else:
         print ('Error: Please use --train or --test flag')
         sys.exit()
