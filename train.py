@@ -426,7 +426,7 @@ def Train(verbose, l1, l2, iteration, lr, batch_size, hidden_size, vocab_size, p
                 'en_opt':en_opt.state_dict(),
                 'l1_de_opt':l1_de_opt.state_dict(),
                 'l2_de_opt':l2_de_opt.state_dict()},
-                postfix+'.pkl' % str(it))
+                postfix+'.pkl')
             
 #        print('Time for each iteration:', time.time()-start)
 
