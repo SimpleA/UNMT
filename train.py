@@ -66,19 +66,18 @@ def valid(dataset, en, de, recon_fn, out_prefix, save_prefix,nE):
     return vMSE
 '''
 
+log_softmax = nn.LogSoftmax()
+
 def maskCCE(output, target, mask):
     total = mask.sum()
-    criterion = nn.CrossEntropyLoss()
-    crossEntropy = criterion(output,target)
-    pdb.set_trace()
-    loss = crossEntropy.masked_select(mask).mean()
+    crossEntropy = -torch.gather(log_softmax(output), 1, target.contiguous().view(-1, 1))
+    loss = crossEntropy.masked_select(mask.view(-1, 1)).mean()
     # loss = loss.cuda() if USE_CUDA else loss
     return loss,total.data[0]
 
 def maskCCE_new(output, target, mask):
     total = mask.sum()
-    criterion = nn.CrossEntropyLoss(reduce=False)
-    crossEntropy = criterion(output.view(-1, VOCAB_SIZE),target.view(-1))
+    crossEntropy = -torch.gather(log_softmax(output.view(-1, VOCAB_SIZE)), 1, target.contiguous().view(-1, 1))
     loss = crossEntropy.masked_select(mask.view(-1, 1)).mean()
     # loss = loss.cuda() if USE_CUDA else loss
     return loss,total.data[0]
@@ -261,7 +260,7 @@ def Train(verbose, l1, l2, iteration, lr, batch_size, hidden_size, vocab_size, p
         batch_l, indices = torch.sort(batch_l, dim=0, descending=True)
         batch_sentence = batch_sentence[indices]
         batch_index = Variable(batch_index[indices])
-        packed_sentence = pack_padded_sequence(batch_sentence.float(), batch_l.cpu().numpy(), batch_first=True)
+        packed_sentence = pack_padded_sequence(batch_sentence, batch_l.cpu().numpy(), batch_first=True)
 
         l2_de.eval()
 
@@ -344,7 +343,7 @@ def Train(verbose, l1, l2, iteration, lr, batch_size, hidden_size, vocab_size, p
         batch_l, indices = torch.sort(batch_l, dim=0, descending=True)
         batch_sentence = batch_sentence[indices]
         batch_index = Variable(batch_index[indices])
-        packed_sentence = pack_padded_sequence(batch_sentence.float(), batch_l.cpu().numpy(), batch_first=True)
+        packed_sentence = pack_padded_sequence(batch_sentence, batch_l.cpu().numpy(), batch_first=True)
         
         l1_de.eval()
         
