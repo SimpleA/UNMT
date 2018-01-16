@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+from visdom import Visdom
 
 USE_CUDA = torch.cuda.is_available()
 
@@ -37,3 +38,31 @@ def shuffle(x, y):
     indices = np.arange(x.shape[0])
     np.random.shuffle(indices)
     return x[indices], y[indices]
+
+class VisdomPlotter(object):
+    def __init__(self, env_name='UNMT'):
+        self.viz = Visdom()
+        self.env = env_name
+        self.plots = {}
+
+    def plot(self, var_name, split_name, x, y, xlabel='iteration'):
+        if var_name not in self.plots:
+            self.plots[var_name] = self.viz.line(
+                X = np.array([x, x]),
+                Y = np.array([y, y]),
+                env = self.env,
+                opts = dict(
+                    legend = [split_name],
+                    title = var_name,
+                    xlabel = xlabel,
+                    ylabel = var_name
+                )
+            )
+        else:
+            self.viz.updateTrace(
+                X = np.array([x]),
+                Y = np.array([y]),
+                env = self.env,
+                win = self.plots[var_name],
+                name = split_name
+            )

@@ -66,24 +66,23 @@ def valid(dataset, en, de, recon_fn, out_prefix, save_prefix,nE):
     return vMSE
 '''
 
-log_softmax = nn.LogSoftmax()
+PLOT = False # Plot in Wisdom
+
+if PLOT:
+    plotter = VisdomPlotter()
+
+criterion = nn.CrossEntropyLoss(reduce=False)
 
 def maskCCE(output, target, mask):
     total = mask.sum()
-    crossEntropy = -torch.gather(log_softmax(output), 1, target.contiguous().view(-1, 1))
-    loss = crossEntropy.masked_select(mask.view(-1, 1)).mean()
+    crossEntropy = criterion(output, target)
+    loss = crossEntropy.masked_select(mask).mean()
     # loss = loss.cuda() if USE_CUDA else loss
     return loss,total.data[0]
 
-def maskCCE_new(output, target, mask):
-    total = mask.sum()
-    crossEntropy = -torch.gather(log_softmax(output.view(-1, VOCAB_SIZE)), 1, target.contiguous().view(-1, 1))
-    loss = crossEntropy.masked_select(mask.view(-1, 1)).mean()
-    # loss = loss.cuda() if USE_CUDA else loss
-    return loss,total.data[0]
 
-def len2mask(batch_l):
-    mask = torch.zeros(len(batch_l),max(batch_l))
+def len2mask(batch_l, gen=False):
+    mask = torch.zeros(len(batch_l),max(batch_l)) if gen == False else torch.zeros(len(batch_l), MAX_LENGTH)
     for i in range(len(batch_l)):
         for j  in range(max(batch_l)):
             if j < batch_l[i]:
@@ -144,6 +143,7 @@ def Train(verbose, l1, l2, iteration, lr, batch_size, hidden_size, vocab_size, p
         batch_index = Variable(batch_index[indices])
         packed_sentence = pack_padded_sequence(batch_sentence, batch_l.cpu().numpy(), batch_first=True)
 
+
         en_opt.zero_grad()
         l1_de_opt.zero_grad()
         hidden = en.init_hidden(batch_sentence.size(0))
@@ -173,6 +173,7 @@ def Train(verbose, l1, l2, iteration, lr, batch_size, hidden_size, vocab_size, p
             denoising_loss_1 += loss
             #Total += total
 
+
         denoising_loss_1.backward()
         '''
         clip = 50.0
@@ -183,6 +184,8 @@ def Train(verbose, l1, l2, iteration, lr, batch_size, hidden_size, vocab_size, p
         l1_de_opt.step()
 
         de_l1_loss += denoising_loss_1.data[0]/bsz
+        if PLOT:
+            plotter.plot('L1 denoising loss', 'train', it, de_l1_loss)
         # if (it+1) % print_every == 0:
         #     print('Loss for epoch {}: {}'.format(it, Epoch_loss/print_every))
 
@@ -234,6 +237,8 @@ def Train(verbose, l1, l2, iteration, lr, batch_size, hidden_size, vocab_size, p
             denoising_loss_2 += loss
             #Total += total
 
+
+
         denoising_loss_2.backward()
         '''
         clip = 50.0
@@ -244,6 +249,8 @@ def Train(verbose, l1, l2, iteration, lr, batch_size, hidden_size, vocab_size, p
         l2_de_opt.step()
 #         print(denoising_loss_1.data[0]/bsz)
         de_l2_loss += denoising_loss_2.data[0]/bsz
+        if PLOT:
+            plotter.plot('L2 denoising loss', 'train', it, de_l2_loss)
 
         # if (it+1) % print_every == 0:
         #     print('Loss for iteration {}: {}'.format(it, Epoch_loss/print_every))
@@ -270,7 +277,7 @@ def Train(verbose, l1, l2, iteration, lr, batch_size, hidden_size, vocab_size, p
         l2_hidden = en.init_hidden(batch_sentence.size(0))
         packed_output,en_l2_hidden = en(packed_sentence, l2_hidden)
         output,_ = pad_packed_sequence(packed_output,batch_first = True)
-        de_l2_input = Variable(torch.zeros(bsz,1,input_size)) 
+        de_l2_input = Variable(torch.zeros(bsz,1,input_size))
         de_l2_context = Variable(torch.zeros(bsz,1,2*hidden_size))
         if USE_CUDA:
             de_l2_input = de_l2_input.cuda()
@@ -300,7 +307,7 @@ def Train(verbose, l1, l2, iteration, lr, batch_size, hidden_size, vocab_size, p
         l1_hidden = en.init_hidden(batch_sentence.size(0))
         packed_output,en_l1_hidden = en(de_l2_output, l1_hidden)
 #        output,_ = pad_packed_sequence(packed_output,batch_first = True)
-        de_l1_input = Variable(torch.zeros(bsz,1,input_size)) 
+        de_l1_input = Variable(torch.zeros(bsz,1,input_size))
         de_l1_context = Variable(torch.zeros(bsz,1,2*hidden_size))
         if USE_CUDA:
             de_l1_input = de_l1_input.cuda()
@@ -309,7 +316,7 @@ def Train(verbose, l1, l2, iteration, lr, batch_size, hidden_size, vocab_size, p
         de_l1_hidden_1 = (en_l1_hidden[2]+en_l1_hidden[3]).unsqueeze(0)
         de_l1_hidden = torch.cat((de_l1_hidden_0,de_l1_hidden_1),0)
 
-        mask = len2mask(batch_l)
+        mask = len2mask(batch_l, True)
 
         de_l1_long_output = Variable(torch.zeros(bsz, MAX_LENGTH, VOCAB_SIZE))
         if USE_CUDA:
@@ -324,12 +331,14 @@ def Train(verbose, l1, l2, iteration, lr, batch_size, hidden_size, vocab_size, p
             if USE_CUDA:
                 de_l1_input = de_l1_input.cuda()
 
-        backtranslation_loss_1, total = maskCCE_new(de_l1_long_output, batch_index, mask)
+        backtranslation_loss_1, total = maskCCE(de_l1_long_output.view(-1, VOCAB_SIZE), batch_index.view(-1), mask.view(-1))
         backtranslation_loss_1.backward()
 
         en_opt.step()
         l1_de_opt.step()
         bt_l1_loss += backtranslation_loss_1.data[0] / bsz
+        if PLOT:
+            plotter.plot('L1 Backtranslation loss', 'train', it, bt_l1_loss)
 
         # print("Backtranslation on Language 2...")
         batch_index, batch_l, batch_sentence = next(l2_bigdata)
@@ -344,16 +353,16 @@ def Train(verbose, l1, l2, iteration, lr, batch_size, hidden_size, vocab_size, p
         batch_sentence = batch_sentence[indices]
         batch_index = Variable(batch_index[indices])
         packed_sentence = pack_padded_sequence(batch_sentence, batch_l.cpu().numpy(), batch_first=True)
-        
+
         l1_de.eval()
-        
+
         en_opt.zero_grad()
         l2_de_opt.zero_grad()
-       
+
         l1_hidden = en.init_hidden(batch_sentence.size(0))
         packed_output,en_l1_hidden = en(packed_sentence, l1_hidden)
         output,_ = pad_packed_sequence(packed_output,batch_first = True)
-        de_l1_input = Variable(torch.zeros(bsz,1,input_size)) 
+        de_l1_input = Variable(torch.zeros(bsz,1,input_size))
         de_l1_context = Variable(torch.zeros(bsz,1,2*hidden_size))
         if USE_CUDA:
             de_l1_input = de_l1_input.cuda()
@@ -362,8 +371,8 @@ def Train(verbose, l1, l2, iteration, lr, batch_size, hidden_size, vocab_size, p
         de_l1_hidden_1 = (en_l1_hidden[2]+en_l1_hidden[3]).unsqueeze(0)
         de_l1_hidden = torch.cat((de_l1_hidden_0,de_l1_hidden_1),0)
 
-        de_l1_output = Variable(torch.zeros(bsz, MAX_LENGTH, 1, input_size)).cuda() if USE_CUDA else Variable(torch.zeros(bsz, MAX_LENGTH, 1, input_size))
-        
+        de_l1_output = Variable(torch.zeros(bsz, output.size(1), 1, input_size)).cuda() if USE_CUDA else Variable(torch.zeros(bsz, output.size(1), 1, input_size))
+
         for di in range(output.size(1)):
             if di == 0:
                 uni_output, de_l1_context, de_h1_hidden, de_l1_attention = l1_de(de_l1_input, de_l1_context, de_l1_hidden, output)
@@ -374,13 +383,13 @@ def Train(verbose, l1, l2, iteration, lr, batch_size, hidden_size, vocab_size, p
             de_l1_input = [l1_dataset.get_embed(index.data[0]).tolist() for index in choose]
             de_l1_input = torch.FloatTensor(de_l1_input).unsqueeze(1)
             de_l1_output[:,di,:,:] = de_l1_input
-        
+
         de_l1_output = de_l1_output.squeeze(2)
         ##de_l2_output is the (fake) translation
         ##TODO: Check if de_l2_output is a valid input for encoder 
         l2_hidden = en.init_hidden(batch_sentence.size(0))
         packed_output, en_l2_hidden = en(de_l1_output, l2_hidden)
-        de_l2_input = Variable(torch.zeros(bsz,1,input_size)) 
+        de_l2_input = Variable(torch.zeros(bsz,1,input_size))
         de_l2_context = Variable(torch.zeros(bsz,1,2*hidden_size))
         if USE_CUDA:
             de_l2_input = de_l2_input.cuda()
@@ -389,7 +398,7 @@ def Train(verbose, l1, l2, iteration, lr, batch_size, hidden_size, vocab_size, p
         de_l2_hidden_1 = (en_l2_hidden[2]+en_l2_hidden[3]).unsqueeze(0)
         de_l2_hidden = torch.cat((de_l2_hidden_0,de_l2_hidden_1),0)
 
-        mask = len2mask(batch_l)
+        mask = len2mask(batch_l, True)
 
         de_l2_long_output = Variable(torch.zeros(bsz, MAX_LENGTH, VOCAB_SIZE))
         if USE_CUDA:
@@ -404,14 +413,16 @@ def Train(verbose, l1, l2, iteration, lr, batch_size, hidden_size, vocab_size, p
             if USE_CUDA:
                 de_l2_input = de_l2_input.cuda()
 
-        backtranslation_loss_2, total = maskCCE_new(de_l2_long_output, batch_index, mask)
+        backtranslation_loss_2, total = maskCCE(de_l2_long_output.view(-1, VOCAB_SIZE), batch_index.view(-1), mask.view(-1))
         backtranslation_loss_2.backward()
 
         en_opt.step()
         l2_de_opt.step()
 
         bt_l2_loss += backtranslation_loss_2.data[0] / bsz
-        
+        if PLOT:
+            plotter.plot('L2 Backtranslation loss', 'train', it, bt_l2_loss)
+
 
 
         if it % print_every == 0:
@@ -419,7 +430,7 @@ def Train(verbose, l1, l2, iteration, lr, batch_size, hidden_size, vocab_size, p
             with open(os.path.join(save_dir, 'log_' + postfix + '.csv'), 'a') as log_file:
                 log_file.write('{},{},{},{},{}'.format(it, de_l1_loss, de_l2_loss, bt_l1_loss, bt_l2_loss) + '\n')
             de_l1_loss, de_l2_loss, bt_l1_loss, bt_l2_loss = 0, 0, 0, 0
-            
+
         if it % save_every == 0:
             torch.save({
                 'en':en.state_dict(),
@@ -429,7 +440,7 @@ def Train(verbose, l1, l2, iteration, lr, batch_size, hidden_size, vocab_size, p
                 'l1_de_opt':l1_de_opt.state_dict(),
                 'l2_de_opt':l2_de_opt.state_dict()},
                 postfix+'e_{}.pkl'.format(it))
-            
+
 #        print('Time for each iteration:', time.time()-start)
 
 
