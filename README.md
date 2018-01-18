@@ -1,8 +1,19 @@
 # Unsupervised-Neural-Machine-Translation
 
+## Platform
+
+Our program is tested on the following machines:
+
+```
+Ubuntu 16.04
+macOS 10.13.1
+```
+
+
+
 ## Dependencies
 
-Our program requires the following packages to run successfully:
+Our program requires the following programs/packages to run successfully:
 
 ```
 python 3.6
@@ -24,9 +35,9 @@ pytorch v0.2
 
 Download the dataset from the following link:
 
+https://drive.google.com/open?id=11bDQXpQOiUw5hEwtbmr1IMxDHk-uMFjF
 
-
-Then unzip the downloaded file and put all the files into the folder `data`
+Then unzip the downloaded file and put all the files into the folder `UNMT/data`
 
 The folder `data	` should contain the following files
 
@@ -47,11 +58,9 @@ vocab_fr.pkl
 
 Download our trained model from the following link:
 
+https://drive.google.com/open?id=1KmcwT5QkEfSTxpdPXD4SNWp-Cj5FiIbk
 
-
-Then put `Nonee_2000.pkl` into the folder `UNMT` (the same folder as train.py, main.py...)
-
-
+Then unzip the file and put `Nonee_2000.pkl` into the folder `UNMT` (the same folder as train.py, main.py...)
 
 4. Run the training program
 
@@ -81,3 +90,4 @@ To evaluate the translation results, type the following command:
 ./mosesdecoder/scripts/generic/multi-bleu.perl data/test_fr_100.proc < l1l2.txt
 ```
 
+Notice that the it is normal to see BLEU score around 0.00 to 0.01.
