@@ -9,8 +9,7 @@ from load import LanguageDataset,MAX_LENGTH, VOCAB_SIZE
 from load import PAD_TOKEN, BOS_TOKEN, EOS_TOKEN, UNK_TOKEN
 import pickle
 import numpy as np
-import tqdm
-import pdb
+
 
 class TestDataset(Dataset):
 	def __init__(self, data_path, language, verbose=True):
@@ -34,7 +33,7 @@ class TestDataset(Dataset):
 		# read test data
 		self.sentence = []
 		self.sent_id = []
-		with open('data/test_{}.proc'.format(language), 'r', encoding='utf-8') as tp:
+		with open('data/test_{}_100.proc'.format(language), 'r', encoding='utf-8') as tp:
 			for idx, line in enumerate(tp):
 				line = line.strip()
 				fields = line.split(',')
@@ -99,7 +98,6 @@ def Test(l1, l2, batch_size, hidden_size, vocab_size, model_path):
 
 		# Translation from l1 to l2
 		for batch_index, batch_l, batch_sentence in l1_loader:
-			pdb.set_trace()
 			bsz = len(batch_l)
 			if USE_CUDA:
 				batch_index = batch_index.cuda()
@@ -139,15 +137,13 @@ def Test(l1, l2, batch_size, hidden_size, vocab_size, model_path):
 				else:
 					uni_output, de_l2_context, de_l2_hidden, de_l2_attention = l2_de(de_l2_output[:,di-1,:,:], de_l2_context, de_l2_hidden, output)
 				_,choose = torch.max(uni_output,1)
-				print(choose)
-				pdb.set_trace()
 				de_l2_input = [l2_dataset.get_embed(index.data[0]).tolist() for index in choose]
 				de_l2_input = torch.FloatTensor(de_l2_input).unsqueeze(1)
 				de_l2_output[:,di,:,:] = de_l2_input
 				txt_output.append([l2_dataset.vocab.index2word[index.data[0]] for index in choose])
 
 			txt_output = np.asarray(txt_output).transpose()
-			with open('l1l2.txt', 'a', encoding='utf-8') as l1_out:
+			with open('l1l2.txt', 'w', encoding='utf-8') as l1_out:
 				for idx in range(txt_output.shape[0]):
 					l1_out.write(' '.join(txt_output[idx].tolist()) + '.\n')
 		
