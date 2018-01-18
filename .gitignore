@@ -1,4 +1,13 @@
 __pycache__/*
-data/*
+data/cross_en
+data/cross_fr
+data/data_en.subword.clean
+data/data_fr.subword.clean
+data/emb_en.dms
+data/emb_fr.dms
+data/test_en_100.proc
+data/test_fr_100.proc
+data/vocab_en.pkl
+data/vocab_fr.pkl
 Nonee_2000.pkl
 todo.txt
