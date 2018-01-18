@@ -17,7 +17,7 @@ Our program requires the following programs/packages to run successfully:
 
 ```
 python 3.6
-numpy v1.3
+numpy v1.13
 pytorch v0.2
 ```
 
