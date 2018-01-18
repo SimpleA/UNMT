@@ -85,7 +85,6 @@ class LanguageDataset(Dataset):
                     self.emb[info[0]] = torch.FloatTensor([float(num) for num in info[1:]])
             of = open('data/emb_{}.dms'.format(language), 'wb')
             pickle.dump(self.emb, of)
-
     def sen2index(self, sen):
         sen_emb = torch.zeros((MAX_LENGTH, 300))
         for ch in '.!()':

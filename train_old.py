@@ -9,6 +9,7 @@ from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 from model import Encoder, Attn, AttnDecoder
 from load import LanguageDataset,MAX_LENGTH, VOCAB_SIZE
 from utils import *
+from tqdm import tqdm
 import os
 
 #TODO: EDIT VALIDATION PROCESS
@@ -70,7 +71,7 @@ log_softmax = nn.LogSoftmax()
 def maskCCE(output, target, mask):
     total = mask.sum()
     crossEntropy = -torch.gather(log_softmax(output), 1, target.contiguous().view(-1, 1))
-    mask = mask.contiguous()
+    mask = mask.continguous()
     loss = crossEntropy.masked_select(mask.view(-1, 1)).mean()
     # loss = loss.cuda() if USE_CUDA else loss
     return loss,total.data[0]
@@ -78,17 +79,13 @@ def maskCCE(output, target, mask):
 def maskCCE_new(output, target, mask):
     total = mask.sum()
     crossEntropy = -torch.gather(log_softmax(output.view(-1, VOCAB_SIZE)), 1, target.contiguous().view(-1, 1))
-    mask = mask.contiguous()
+    mask = mask.continguous()    
     loss = crossEntropy.masked_select(mask.view(-1, 1)).mean()
     # loss = loss.cuda() if USE_CUDA else loss
     return loss,total.data[0]
 
-def len2mask(batch_l, use_max_len=False):
-    if use_max_len:
-        mask = torch.zeros(len(batch_l),MAX_LENGTH)
-    else:
-        mask = torch.zeros(len(batch_l),max(batch_l))
-        
+def len2mask(batch_l):
+    mask = torch.zeros(len(batch_l),max(batch_l))
     for i in range(len(batch_l)):
         for j  in range(max(batch_l)):
             if j < batch_l[i]:
@@ -314,7 +311,7 @@ def Train(verbose, l1, l2, iteration, lr, batch_size, hidden_size, vocab_size, p
         de_l1_hidden_1 = (en_l1_hidden[2]+en_l1_hidden[3]).unsqueeze(0)
         de_l1_hidden = torch.cat((de_l1_hidden_0,de_l1_hidden_1),0)
 
-        mask = len2mask(batch_l, True)
+        mask = len2mask(batch_l)
 
         de_l1_long_output = Variable(torch.zeros(bsz, MAX_LENGTH, VOCAB_SIZE))
         if USE_CUDA:
@@ -394,7 +391,7 @@ def Train(verbose, l1, l2, iteration, lr, batch_size, hidden_size, vocab_size, p
         de_l2_hidden_1 = (en_l2_hidden[2]+en_l2_hidden[3]).unsqueeze(0)
         de_l2_hidden = torch.cat((de_l2_hidden_0,de_l2_hidden_1),0)
 
-        mask = len2mask(batch_l, True)
+        mask = len2mask(batch_l)
 
         de_l2_long_output = Variable(torch.zeros(bsz, MAX_LENGTH, VOCAB_SIZE))
         if USE_CUDA:
