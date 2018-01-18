@@ -1,0 +1,12 @@
+This folder should contain the following files:
+
+cross_en
+cross_fr
+data_en.subword.clean
+data_fr.subword.clean
+emb_en.dms
+emb_fr.dms
+test_en_100.proc
+test_fr_100.proc
+vocab_en.pkl
+vocab_fr.pkl
