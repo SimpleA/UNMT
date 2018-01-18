@@ -60,7 +60,7 @@ Download our trained model from the following link:
 
 https://drive.google.com/open?id=1KmcwT5QkEfSTxpdPXD4SNWp-Cj5FiIbk
 
-Then unzip the file and put `Nonee_2000.pkl` into the folder `UNMT` (the same folder as train.py, main.py...)
+Then unzip the file and put `Nonee_2000.pkl` into the folder `UNMT` (the same folder as train.py, main.py…). That is, the folder `UNMT` should contain a file callled  `Nonee_2000.pkl`.
 
 4. Run the training program
 
