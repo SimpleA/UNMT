@@ -1,5 +1,9 @@
 # Unsupervised-Neural-Machine-Translation
 
+This is a PyTorch implementation of the paper "Unsupervised Neural Machine Translation".
+
+**NOTICE**: This repository is still in development since we believe there are still some bugs. 
+
 ## Platform
 
 Our program is tested on the following machines:
@@ -35,7 +39,7 @@ pytorch v0.2
 
 Download the dataset from the following link:
 
-https://drive.google.com/open?id=11bDQXpQOiUw5hEwtbmr1IMxDHk-uMFjF
+https://drive.google.com/file/d/11bDQXpQOiUw5hEwtbmr1IMxDHk-uMFjF/view?usp=sharing
 
 Then unzip the downloaded file and put all the files into the folder `UNMT/data`
 
@@ -58,7 +62,7 @@ vocab_fr.pkl
 
 Download our trained model from the following link:
 
-https://drive.google.com/open?id=1KmcwT5QkEfSTxpdPXD4SNWp-Cj5FiIbk
+https://drive.google.com/file/d/1KmcwT5QkEfSTxpdPXD4SNWp-Cj5FiIbk/view?usp=sharing
 
 Then unzip the file and put `Nonee_2000.pkl` into the folder `UNMT` (the same folder as train.py, main.py…). That is, the folder `UNMT` should contain a file callled  `Nonee_2000.pkl`.
 
